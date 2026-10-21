@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Bola Dan Arah</title>
+<style>
+:root{--ink:#f7fbff;--cyan:#6ef3ff;--gold:#ffd36a;--panel:rgba(7,18,35,.72);--line:rgba(255,255,255,.2)}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071221;color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+#camera{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#071221}
+#shade{position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(2,8,18,.55),transparent 27%,transparent 68%,rgba(2,8,18,.45))}
+#game{position:fixed;inset:0;pointer-events:none}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(8px);box-shadow:0 8px 30px #0003}
+#topbar{position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+#brand{padding:8px 12px;font-weight:900;letter-spacing:.4px;font-size:clamp(14px,2.2vw,20px)}
+#stats{display:flex;gap:6px}
+.stat{padding:7px 10px;min-width:64px;text-align:center;font-size:11px;color:#c9d8e8}
+.stat b{display:block;color:white;font-size:17px;line-height:1.2}
+#questionCard{position:absolute;top:72px;left:50%;transform:translateX(-50%);width:min(410px,calc(100vw - 24px));padding:10px 14px;text-align:center}
+#phase{font-size:10px;letter-spacing:1.4px;color:var(--cyan);font-weight:800;text-transform:uppercase}
+#question{font-size:clamp(16px,2.8vw,23px);font-weight:850;line-height:1.18;margin:3px 0 4px}
+#instruction{font-size:11px;color:#d0dbea}
+#playfield{position:absolute;inset:0}
+.ball{position:absolute;width:clamp(54px,8vw,78px);height:clamp(54px,8vw,78px);border-radius:50%;display:grid;place-items:center;font-size:clamp(22px,3vw,30px);font-weight:900;color:#09243a;background:radial-gradient(circle at 28% 24%,#fff 0 5%,#a6fbff 8%,#31cde9 42%,#0871a5 76%,#063b69 100%);border:2px solid #d8ffff;box-shadow:0 0 18px #2de8ff99,inset -8px -9px 13px #002f4d55;pointer-events:none;transition:box-shadow .12s}
+.ball::after{content:"";position:absolute;inset:8px;border:1px solid #ffffff75;border-radius:50%}
+.choiceBall{position:absolute;width:clamp(62px,8vw,82px);height:clamp(62px,8vw,82px);border-radius:50%;display:grid;place-items:center;text-align:center;padding:5px;font-size:clamp(10px,1.8vw,14px);font-weight:900;color:#09243a;background:radial-gradient(circle at 28% 24%,#fff 0 5%,#a6fbff 8%,#31cde9 42%,#0871a5 76%,#063b69 100%);border:2px solid #d8ffff;box-shadow:0 0 18px #2de8ff99;pointer-events:none;transform:translate(-50%,-50%)}\n.choiceBall.locked{box-shadow:0 0 0 5px #6ef3ff66,0 0 30px #6ef3ff;animation:pulse .6s infinite alternate}\n.ball.locked{box-shadow:0 0 0 5px #6ef3ff66,0 0 30px #6ef3ff;animation:pulse .6s infinite alternate}
+.ball.grabbed{box-shadow:0 0 0 6px #ffd36a88,0 0 30px #ffd36a}
+@keyframes pulse{to{filter:brightness(1.3);transform:scale(1.04)}}
+#boxTarget{position:absolute;width:clamp(100px,16vw,150px);height:clamp(82px,13vw,120px);border:3px solid var(--gold);border-radius:10px;background:rgba(255,211,106,.12);box-shadow:0 0 20px #ffd36a33;pointer-events:none}
+#boxTarget:before{content:"KOTAK";position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-size:13px;letter-spacing:2px;font-weight:900;color:#ffe6a0}
+#boxTarget .zone{position:absolute;inset:0;border-radius:7px}
+#boxTarget .zoneLabel{position:absolute;top:-20px;left:0;right:0;text-align:center;font-size:10px;color:#ffe6a0;font-weight:800}
+#laser{position:absolute;height:3px;transform-origin:0 50%;background:linear-gradient(90deg,#6ef3ff00,#6ef3ff,#fff);box-shadow:0 0 10px #6ef3ff;display:none;z-index:5}
+#cursor{position:absolute;width:17px;height:17px;border:2px solid white;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 4px #6ef3ff55,0 0 18px #6ef3ff;background:#6ef3ff88;display:none;z-index:6}
+#cursor:after{content:"";position:absolute;width:4px;height:4px;background:#fff;border-radius:50%;left:4.5px;top:4.5px}
+#lockRing{position:absolute;width:34px;height:34px;transform:translate(-50%,-50%);border:3px solid var(--gold);border-radius:50%;display:none;z-index:7}
+#lockRing:before{content:"";position:absolute;inset:-5px;border:1px solid #ffd36a77;border-radius:50%}
+#bottomHint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);padding:7px 12px;font-size:11px;color:#e1edf7;text-align:center;white-space:nowrap;max-width:calc(100vw - 20px)}
+#activate{position:fixed;inset:0;display:grid;place-items:center;background:rgba(3,10,22,.55);z-index:20;pointer-events:auto}
+#startCard{width:min(340px,calc(100vw - 32px));padding:24px;text-align:center}
+#startCard h1{font-size:26px;line-height:1.1;margin:0 0 8px}
+#startCard p{font-size:13px;color:#d0dbea;line-height:1.5;margin:0 0 18px}
+#activateBtn,#restartBtn{pointer-events:auto;border:0;border-radius:999px;background:linear-gradient(100deg,#6ef3ff,#91ffce);color:#062238;font-weight:950;padding:12px 22px;font-size:14px;cursor:pointer;box-shadow:0 0 22px #6ef3ff44}
+#status{font-size:11px;color:#c9d8e8;margin-top:12px;min-height:15px}
+#feedback{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);font-size:clamp(22px,4vw,34px);font-weight:950;text-shadow:0 3px 14px #000;opacity:0;transition:opacity .15s;text-align:center;white-space:nowrap}
+#feedback.show{opacity:1}
+#endScreen{position:fixed;inset:0;z-index:18;display:none;place-items:center;background:#03101dc9;pointer-events:auto}
+#endCard{padding:24px;text-align:center;width:min(340px,calc(100vw - 32px))}
+#endCard h2{margin:0 0 8px;font-size:27px}
+#endCard p{color:#d5e4f3;font-size:14px}
+.particle{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--gold);pointer-events:none;animation:burst .65s ease-out forwards;z-index:8}
+@keyframes burst{from{opacity:1;transform:translate(0,0) scale(1)}to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.1)}}
+#progress{position:absolute;top:0;left:0;height:3px;background:linear-gradient(90deg,#6ef3ff,#ffd36a);width:0%;transition:width .25s}
+@media(max-width:600px){#topbar{top:8px;left:8px;right:8px}#brand{padding:7px 9px}#stats{gap:4px}.stat{min-width:53px;padding:6px 7px}#questionCard{top:65px;padding:8px 10px}#bottomHint{bottom:8px;font-size:10px}#boxTarget{width:112px;height:88px}}
+</style>
+</head>
+<body>
+<video id="camera" autoplay playsinline muted></video><div id="shade"></div>
+<div id="progress"></div>
+<div id="game">
+  <div id="topbar">
+    <div id="brand" class="panel">⚽ BOLA DAN ARAH</div>
+    <div id="stats">
+      <div class="stat panel">SKOR<b id="score">0</b></div>
+      <div class="stat panel">COMBO<b id="combo">0×</b></div>
+      <div class="stat panel">SOALAN<b id="counter">1/10</b></div>
+    </div>
+  </div>
+  <div id="questionCard" class="panel">
+    <div id="phase">KATA ARAH</div><div id="question">Tekan “Activate Camera” untuk mula</div><div id="instruction">Tunjuk hujung jari telunjuk pada bola dan tahan 0.6 saat.</div>
+  </div>
+  <div id="playfield">
+    <div id="boxTarget" style="display:none"><div class="zone"></div><div class="zoneLabel">KOTAK</div></div>
+    <div id="ball" class="ball" style="left:50%;top:62%;display:none">●</div>
+    <div id="laser"></div><div id="cursor"></div><div id="lockRing"></div>
+    <div id="feedback"></div>
+  </div>
+  <div id="bottomHint" class="panel">Pastikan tangan kelihatan jelas di hadapan kamera.</div>
+</div>
+<div id="activate">
+  <div id="startCard" class="panel">
+    <h1>⚽ Bola Dan Arah</h1>
+    <p>Permainan tatabahasa Bahasa Melayu: kata arah. Benarkan akses kamera untuk mengawal bola menggunakan hujung jari telunjuk.</p>
+    <button id="activateBtn">ACTIVATE CAMERA</button>
+    <div id="status">Kamera belum diaktifkan.</div>
+  </div>
+</div>
+<div id="endScreen"><div id="endCard" class="panel"><h2>Hebat! 🎉</h2><p id="finalText">Skor akhir: 0</p><button id="restartBtn">MAIN LAGI</button></div></div>
+
+<script type="module">
+import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm";
+
+const $ = id => document.getElementById(id);
+const video=$("camera"), activate=$("activate"), activateBtn=$("activateBtn"), statusEl=$("status");
+const ball=$("ball"), box=$("boxTarget"), cursor=$("cursor"), laser=$("laser"), lockRing=$("lockRing");
+const questionEl=$("question"), instructionEl=$("instruction"), phaseEl=$("phase"), feedback=$("feedback");
+const scoreEl=$("score"), comboEl=$("combo"), counterEl=$("counter"), progress=$("progress"), hint=$("bottomHint");
+let handLandmarker=null, stream=null, rafId=0, running=false, lastVideoTime=-1;
+let score=0, combo=0, qIndex=0, mode="normal", activeQuestion=null, choiceBalls=[], selectedNormalAnswer=null;
+let pointer={x:0,y:0,visible:false}, dwellStart=0, dwellTarget=null, grabbed=false, lastTimestamp=0, audioCtx=null;
+const NORMAL=[
+ {prompt:"Bola berada di ___ kotak.",answer:"atas",choices:["atas","bawah","dalam"]},
+ {prompt:"Bola berada di ___ kotak.",answer:"dalam",choices:["tepi","dalam","belakang"]},
+ {prompt:"Bola berada di ___ kotak.",answer:"tepi",choices:["atas","tepi","bawah"]},
+ {prompt:"Bola berada di ___ kotak.",answer:"bawah",choices:["bawah","atas","dalam"]},
+ {prompt:"Bola berada di ___ kotak.",answer:"depan",choices:["belakang","depan","tepi"]},
+ {prompt:"Bola berada di ___ kotak.",answer:"belakang",choices:["dalam","belakang","atas"]},
+ {prompt:"Bola berada di ___ kotak.",answer:"tepi",choices:["bawah","dalam","tepi"]},
+ {prompt:"Bola berada di ___ kotak.",answer:"dalam",choices:["dalam","depan","belakang"]},
+ {prompt:"Bola berada di ___ kotak.",answer:"atas",choices:["tepi","atas","bawah"]},
+ {prompt:"Bola berada di ___ kotak.",answer:"depan",choices:["depan","dalam","atas"]}
+];
+// Matching challenge occupies questions 4–8; five spatial matches.
+const MATCH=[
+ {word:"ATAS",answer:"atas",help:"Letakkan bola di atas kotak."},
+ {word:"DALAM",answer:"dalam",help:"Letakkan bola di dalam kotak."},
+ {word:"TEPI",answer:"tepi",help:"Letakkan bola di tepi kotak."},
+ {word:"ATAS",answer:"atas",help:"Letakkan bola di atas kotak."},
+ {word:"DALAM",answer:"dalam",help:"Letakkan bola di dalam kotak."}
+];
+function sound(freq=600,duration=.09,type="sine",volume=.045){
+ try{if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=freq;g.gain.value=volume;o.connect(g);g.connect(audioCtx.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.stop(audioCtx.currentTime+duration);}catch(e){}
+}
+function showFeedback(text,good=true){feedback.textContent=text;feedback.style.color=good?"#8dffcc":"#ffb6a8";feedback.classList.add("show");setTimeout(()=>feedback.classList.remove("show"),700);}
+function rect(el){return el.getBoundingClientRect();}
+function place(el,x,y){el.style.left=x+"px";el.style.top=y+"px";}
+function center(el){const r=rect(el);return{x:r.left+r.width/2,y:r.top+r.height/2};}
+function randomPos(){const w=innerWidth,h=innerHeight;return{x:Math.max(70,Math.min(w-70,w*(.22+Math.random()*.56))),y:Math.max(185,Math.min(h-100,h*(.48+Math.random()*.3)))};}
+function setBallPos(x,y){place(ball,x-rect(ball).width/2,y-rect(ball).height/2);}
+function setBoxPos(x,y){place(box,x-rect(box).width/2,y-rect(box).height/2);}
+function spawnParticles(x,y){for(let i=0;i<12;i++){const p=document.createElement("i");p.className="particle";p.style.left=x+"px";p.style.top=y+"px";p.style.setProperty("--dx",(Math.random()*130-65)+"px");p.style.setProperty("--dy",(Math.random()*-100-10)+"px");$("playfield").appendChild(p);setTimeout(()=>p.remove(),750);}}
+function updateStats(){scoreEl.textContent=score;comboEl.textContent=combo+"×";counterEl.textContent=Math.min(qIndex+1,10)+"/10";progress.style.width=(qIndex/10*100)+"%";}
+function startQuestion(){
+ if(qIndex>=10){finishGame();return;}
+ grabbed=false;dwellStart=0;dwellTarget=null;ball.classList.remove("grabbed","locked");
+ activeQuestion=NORMAL[qIndex];
+ if(qIndex>=3&&qIndex<=7){mode="match";const m=MATCH[qIndex-3];activeQuestion=m;phaseEl.textContent="CABARAN PADANAN · "+(qIndex-2)+"/5";questionEl.textContent="Kata arah: "+m.word;instructionEl.textContent=m.help+" Hold pada bola untuk grab, kemudian gerakkan dan hold pada kedudukan betul.";box.style.display="block";$("boxTarget").querySelector(".zoneLabel").textContent="KOTAK";const bx=innerWidth*.72,by=innerHeight*.58;setBoxPos(bx,by);const bp=randomPos();setBallPos(Math.min(innerWidth*.43,bp.x),bp.y);ball.style.display="grid";hint.textContent="GRAB: tahan pada bola 0.6s · LEPAS: tahan di kedudukan yang betul 0.6s"; }
+ else {mode="normal";phaseEl.textContent="KATA ARAH";questionEl.textContent=activeQuestion.prompt;instructionEl.textContent="Tunjuk bola dengan kata arah yang betul dan tahan 0.6 saat.";box.style.display="none";ball.style.display="none";selectedNormalAnswer=null;
+  const positions=[innerWidth*.24,innerWidth*.5,innerWidth*.76];
+  activeQuestion.choices.forEach((word,i)=>{const el=document.createElement("div");el.className="choiceBall";el.textContent=word.toUpperCase();el.dataset.answer=word;el.style.left=positions[i]+"px";el.style.top=Math.min(innerHeight-115,innerHeight*.63)+"px";$("playfield").appendChild(el);choiceBalls.push(el);});
+  hint.textContent="Pilih satu daripada tiga bola kata arah menggunakan hujung jari telunjuk."; }
+ updateStats();
+}
+function finishGame(){running=false;cancelAnimationFrame(rafId);$("finalText").textContent="Skor akhir: "+score+" daripada 10 · Combo terbaik: "+combo+"×";$("endScreen").style.display="grid";sound(740,.2);setTimeout(()=>sound(980,.24),150);}
+function nextQuestion(good){if(good){score+=10;combo++;sound(780,.11);showFeedback("BETUL! +10",true);}else{combo=0;sound(180,.16,"triangle");showFeedback("CUBA LAGI",false);}updateStats();if(good){const c=center(ball);spawnParticles(c.x,c.y);setTimeout(()=>{qIndex++;startQuestion();},650);}}
+function isInside(x,y,r){return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;}
+function targetZone(x,y){
+ const r=rect(box), relX=(x-r.left)/r.width, relY=(y-r.top)/r.height;
+ if(y<r.top-4&&x>r.left-12&&x<r.right+12)return "atas";
+ if(relX>=0&&relX<=1&&relY>=0&&relY<=1)return "dalam";
+ if(x>=r.left-22&&x<=r.right+22&&y>=r.top-12&&y<=r.bottom+12)return "tepi";
+ return null;
+}
+function processPointer(x,y,now){
+ pointer.x=x;pointer.y=y;pointer.visible=true;
+ cursor.style.display="block";place(cursor,x,y);
+ const b=rect(ball), onBall=isInside(x,y,b);
+ let currentTarget=null;
+ if(mode==="normal"){
+   const hit=choiceBalls.find(el=>isInside(x,y,rect(el)));
+   currentTarget=hit?("choice:"+hit.dataset.answer):null;
+   selectedNormalAnswer=hit?hit.dataset.answer:null;
+ } else if(mode==="match"){
+   if(!grabbed)currentTarget=onBall?"grab":null;
+   else currentTarget=targetZone(x,y);
+ }
+ if(grabbed&&mode==="match"){setBallPos(x,y);ball.classList.add("grabbed");}
+ if(currentTarget!==dwellTarget){dwellTarget=currentTarget;dwellStart=now;}
+ if(currentTarget){const elapsed=now-dwellStart;lockRing.style.display="block";place(lockRing,x,y);lockRing.style.borderColor=mode==="match"&&grabbed?"#ffd36a":"#6ef3ff";lockRing.style.transform=`translate(-50%,-50%) rotate(${Math.min(360,elapsed/600*360)}deg)`;ball.classList.add("locked");}
+ else{lockRing.style.display="none";ball.classList.remove("locked");}
+ laser.style.display="block";const bc=center(ball);const dx=bc.x-x,dy=bc.y-y;laser.style.left=x+"px";laser.style.top=y+"px";laser.style.width=Math.hypot(dx,dy)+"px";laser.style.transform=`rotate(${Math.atan2(dy,dx)}rad)`;
+ if(currentTarget&&now-dwellStart>=600){
+  if(mode==="normal"){const good=selectedNormalAnswer===activeQuestion.answer;nextQuestion(good);}
+  else if(mode==="match"&&!grabbed&&currentTarget==="grab"){grabbed=true;dwellTarget=null;dwellStart=now;ball.classList.add("grabbed");sound(500,.1);showFeedback("GRAB!",true);lockRing.style.display="none";}
+  else if(mode==="match"&&grabbed){const good=currentTarget===activeQuestion.answer;grabbed=false;if(good){nextQuestion(true);}else{ball.classList.remove("grabbed");showFeedback("Cuba kedudukan lain",false);sound(180,.12);dwellTarget=null;dwellStart=now;}}
+ }
+}
+function onNoHand(){pointer.visible=false;cursor.style.display="none";lockRing.style.display="none";laser.style.display="none";if(!grabbed){dwellTarget=null;dwellStart=0;} }
+async function initCamera(){
+ activateBtn.disabled=true;activateBtn.textContent="MEMULAKAN…";statusEl.textContent="Meminta kebenaran kamera…";
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:1280},height:{ideal:720}},audio:false});
+  video.srcObject=stream;await video.play();
+  statusEl.textContent="Memuatkan hand tracking…";
+  const vision=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm");
+  handLandmarker=await HandLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",delegate:"GPU"},runningMode:"VIDEO",numHands:1});
+  activate.style.display="none";running=true;score=0;combo=0;qIndex=0;updateStats();startQuestion();sound(520,.08);loop();
+ }catch(err){
+  console.error(err);statusEl.textContent="Kamera/tracking gagal: "+(err&&err.message?err.message:"Semak izin kamera dan sambungan internet.");
+  activateBtn.disabled=false;activateBtn.textContent="CUBA LAGI";
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+ }
+}
+function loop(){
+ if(!running)return;
+ if(video.readyState>=2&&video.currentTime!==lastVideoTime){
+  lastVideoTime=video.currentTime;
+  try{
+   const result=handLandmarker.detectForVideo(video,performance.now());
+   if(result.landmarks&&result.landmarks.length){
+    // Landmark 8 is the index fingertip; no gesture classification is used.
+    const tip=result.landmarks[0][8];
+    const x=(1-tip.x)*innerWidth,y=tip.y*innerHeight; // mirrored to match the selfie preview
+    processPointer(x,y,performance.now());
+   }else onNoHand();
+  }catch(err){console.warn("Hand tracking frame skipped",err);}
+ }
+ rafId=requestAnimationFrame(loop);
+}
+activateBtn.addEventListener("click",initCamera);
+$("restartBtn").addEventListener("click",()=>{$("endScreen").style.display="none";score=0;combo=0;qIndex=0;running=true;updateStats();startQuestion();loop();});
+window.addEventListener("resize",()=>{if(mode==="match"&&box.style.display!=="none"){setBoxPos(innerWidth*.72,innerHeight*.58);}});
+window.addEventListener("beforeunload",()=>{if(stream)stream.getTracks().forEach(t=>t.stop());if(handLandmarker)handLandmarker.close();});
+</script>
+</body>
+</html>
